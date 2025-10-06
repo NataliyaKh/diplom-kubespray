@@ -4,3 +4,6 @@
 *.backup
 terraform.tfvars
 key.json
+kubespray/*
+!kubespray/inventory/
+!kubespray/inventory/mycluster/
