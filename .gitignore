@@ -7,3 +7,6 @@ key.json
 kubespray/*
 !kubespray/inventory/
 !kubespray/inventory/mycluster/
+!kubespray/cluster-wrapper.yml
+!kubespray/makefile
+!kubespray/generate_inventory.py
