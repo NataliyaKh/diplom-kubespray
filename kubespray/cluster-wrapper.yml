@@ -1,0 +1,38 @@
+---
+- name: Pre-generate inventory and run Kubespray
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    kubespray_path: /home/vboxuser/git/diplom/diplom-kubespray/kubespray
+    terraform_path: /home/vboxuser/git/diplom/diplom-k8s/nodes
+    tf_output_path: "{{ kubespray_path }}/terraform-output.json"
+
+  tasks:
+    - name: Add tf output to json
+      command: terraform output -json
+      args:
+        chdir: "{{ terraform_path }}"
+      register: tf_output
+
+    - name: Save terraform-output.json
+      copy:
+        content: "{{ tf_output.stdout }}"
+        dest: "{{ tf_output_path }}"
+
+    - name: Make inventory dir
+      ansible.builtin.file:
+        path: "{{ kubespray_path }}/inventory/mycluster"
+        state: directory
+        mode: 0755
+
+    - name: Generate inventory
+      shell: |
+        cd {{ kubespray_path }}
+        echo "Start gen"
+        python3 generate_inventory.py
+        echo "After gen"
+
+- name: Run Kubespray cluster install
+  import_playbook: "{{ kubespray_path }}/playbooks/cluster.yml"
