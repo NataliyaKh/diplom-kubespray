@@ -1,0 +1,28 @@
+---
+- name: Generate kubeadm join config with public master IP
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Get kubeadm token from master
+      delegate_to: master
+      command: kubeadm token create
+      register: kubeadm_token
+      run_once: true
+
+    - name: Get discovery token ca cert hash from master
+      delegate_to: master
+      shell: |
+        openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | \
+        openssl rsa -pubin -outform DER 2>/dev/null | \
+        openssl dgst -sha256 -hex | \
+        sed 's/^.* //'
+      register: ca_cert_hash
+      run_once: true
+
+    - name: Set fact for token and hash
+      set_fact:
+        kubeadm_token_variable: "{{ kubeadm_token.stdout }}"
+        ca_cert_hash_variable: "{{ ca_cert_hash.stdout }}"
+

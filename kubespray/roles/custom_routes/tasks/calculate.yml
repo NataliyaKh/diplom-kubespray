@@ -1,0 +1,28 @@
+---
+
+- name: Gather private IPs of all nodes
+  set_fact:
+    all_private_ips: >-
+      {{ groups['all'] | map('extract', hostvars, ['ip']) | list }}
+
+- name: Calculate all subnets (/24)
+  set_fact:
+    all_subnets: >-
+      {{ all_private_ips | map('regex_replace', '(\\d+\\.\\d+\\.\\d+)\\.\\d+', '\\1.0/24') | list | unique }}
+
+- name: Determine my subnet
+  set_fact:
+    my_subnet: "{{ ip | regex_replace('(\\d+\\.\\d+\\.\\d+)\\.\\d+', '\\1.0/24') }}"
+
+- name: Calculate routes to add
+  set_fact:
+    routes_to_add: >-
+      {{
+        all_subnets
+        | reject('equalto', my_subnet)
+        | map('community.general.dict_kv', 'to')
+        | map('combine', {
+            'via': (ip | regex_replace('(\\d+\\.\\d+\\.\\d+)\\.\\d+', '\\1.1'))
+          })
+        | list
+      }}
