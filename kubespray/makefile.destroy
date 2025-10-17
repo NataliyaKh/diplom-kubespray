@@ -1,0 +1,13 @@
+TERRAFORM_DIR = ../diplom-k8s/nodes
+INVENTORY_DIR = ./inventory/mycluster
+KUBECONFIG_PATH = ~/.kube/config
+
+destroy:
+	cd $(TERRAFORM_DIR) && terraform destroy -auto-approve
+
+	rm -rf $(INVENTORY_DIR)
+
+	rm -f $(KUBECONFIG_PATH)
+
+	@echo "Cluster removed"
+

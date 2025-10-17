@@ -1,0 +1,24 @@
+---
+
+- name: Include route calculation
+  include_tasks: calculate.yml
+
+- name: Add custom routes if defined
+  become: true
+  when: routes_to_add is defined and routes_to_add | length > 0
+  loop: "{{ routes_to_add }}"
+  loop_control:
+    label: "{{ item.to }}"
+  command: ip route replace {{ item.to }} via {{ item.via }}
+  register: route_add_result
+  changed_when: "'File exists' not in route_add_result.stderr"
+
+- name: Mark route as added
+  become: true
+  when: route_add_result is defined and route_add_result.results is defined
+  copy:
+    content: "added"
+    dest: "/tmp/route-added-{{ item.item.to | replace('/', '_') }}"
+  loop: "{{ route_add_result.results }}"
+  loop_control:
+    label: "{{ item.item.to }}"

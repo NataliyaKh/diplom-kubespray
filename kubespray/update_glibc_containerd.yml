@@ -1,0 +1,24 @@
+---
+- name: Update glibc and containerd on all nodes
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Upgrade libc6 (glibc)
+      apt:
+        name: libc6
+        state: latest
+
+    - name: Install or upgrade containerd
+      apt:
+        name: containerd
+        state: latest
+
+    - name: Reboot nodes if needed
+      reboot:
+        reboot_timeout: 600
+      when: ansible_facts['os_family'] == 'Debian'
