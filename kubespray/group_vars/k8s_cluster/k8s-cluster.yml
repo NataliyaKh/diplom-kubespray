@@ -3,3 +3,6 @@ apiserver_loadbalancer_domain_name: "{{ public_api_ip }}"
 loadbalancer_apiserver:
   address: "{{ public_api_ip }}"
   port: 6443
+
+ansible_environment:
+  KUBECONFIG: /etc/kubernetes/admin.conf

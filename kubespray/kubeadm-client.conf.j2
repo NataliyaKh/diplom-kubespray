@@ -3,7 +3,7 @@ kind: JoinConfiguration
 discovery:
   bootstrapToken:
     token: "{{ kubeadm_token_variable }}"
-    apiServerEndpoint: "{{ public_api_ip }}:6443"
+    apiServerEndpoint: "{{ public_api_ip | default(hostvars['master']['ansible_host']) }}:6443"
     caCertHashes:
       - "sha256:{{ ca_cert_hash_variable }}"
   timeout: 5m0s

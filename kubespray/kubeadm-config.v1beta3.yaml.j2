@@ -1,0 +1,3 @@
+controlPlaneEndpoint: "{{ kubeadm_control_plane_endpoint }}"
+
+controlPlaneEndpoint: "{{ kubeadm_control_plane_endpoint | default(public_api_ip ~ ':6443') }}"

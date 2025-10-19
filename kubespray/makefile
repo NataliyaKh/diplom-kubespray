@@ -1,17 +1,52 @@
-KUBECONFIG_PATH = $(CURDIR)/inventory/mycluster/artifacts/admin.conf
-MASTER_IP = $(shell cd ../diplom-k8s/nodes && terraform output -json private_master_ips | jq -r '.[0]')
+KUBECONFIG_PATH := $(CURDIR)/inventory/mycluster/artifacts/admin.conf
 
-install:
+MASTER_PUBLIC_IP := $(shell cd /home/vboxuser/git/diplom/diplom-k8s/nodes && terraform output -json external_master_ips | jq -r '.[0]')
+MASTER_PRIVATE_IP := $(shell cd /home/vboxuser/git/diplom/diplom-k8s/nodes && terraform output -json private_master_ips | jq -r '.[0]')
+
+SSH_USER := ubuntu
+LOCAL_PORT := 16443
+REMOTE_PORT := 6443
+
+tunnel:
+	@echo ">>> Killing old tunnels..."
+	-pkill -f "ssh.*$(LOCAL_PORT)" || true
+	@echo ">>> Setting ssh tunnel at $(LOCAL_PORT) → $(MASTER_PRIVATE_IP):$(REMOTE_PORT)"
+	ssh -f -N -L $(LOCAL_PORT):$(MASTER_PRIVATE_IP):$(REMOTE_PORT) $(SSH_USER)@$(MASTER_PUBLIC_IP)
+	@echo ">>> Checking tunnel..."
+	sleep 2
+	nc -zv 127.0.0.1 $(LOCAL_PORT)
+
+install: tunnel
+	@echo ">>> Generating inventory..."
 	python3 generate_inventory.py
 
-	cp $(KUBECONFIG_PATH) ~/.kube/config
-	chmod 600 ~/.kube/config
+	@if [ -f "$(KUBECONFIG_PATH)" ]; then \
+		echo ">>> Copying kubeconfig..."; \
+		mkdir -p ~/.kube; \
+		cp $(KUBECONFIG_PATH) ~/.kube/config; \
+		chmod 600 ~/.kube/config; \
+	else \
+		echo ">>> Warning: kubeconfig file not found at $(KUBECONFIG_PATH). Skipping copy."; \
+	fi
 
-	@echo "MASTER PRIVATE IP = $(MASTER_IP)"
+	@echo "MASTER PRIVATE IP = $(MASTER_PRIVATE_IP)"
+	@echo "MASTER PUBLIC IP = $(MASTER_PUBLIC_IP)"
 	@echo "KUBECONFIG = $(KUBECONFIG_PATH)"
 
+	@echo ">>> Updating kubeconfig with API address..."
 	@export KUBECONFIG=$(KUBECONFIG_PATH) && \
 	ansible-playbook -i inventory/mycluster/hosts.yaml playbooks/fix-kubeconfig.yml \
-		-e "master_ip=$(MASTER_IP)"
+		-e "master_ip=127.0.0.1" \
+		-e "master_port=$(LOCAL_PORT)"
 
-	@echo "KUBECONFIG updated. You can now use kubectl."
+	@echo ">>> Checking cluster:"
+	@if [ -f "$(KUBECONFIG_PATH)" ]; then \
+		KUBECONFIG=$(KUBECONFIG_PATH) kubectl cluster-info; \
+		KUBECONFIG=$(KUBECONFIG_PATH) kubectl get nodes; \
+	else \
+		echo ">>> kubeconfig not found, cannot check cluster."; \
+	fi
+
+tunnel-clean:
+	@echo ">>> Killing tunnel..."
+	-pkill -f "ssh.*$(LOCAL_PORT)" || true
