@@ -73,6 +73,7 @@ coverage.xml
 
 # Django stuff:
 *.log
+ansible.log
 !install.log
 local_settings.py
 
