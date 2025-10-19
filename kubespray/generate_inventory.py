@@ -21,8 +21,10 @@ admin_conf_path = os.path.join(inv_dir, "artifacts", "admin.conf")
 kube_dir = os.path.expanduser("~/.kube")
 kube_config = os.path.join(kube_dir, "config")
 
+
 def get_subnet(ip, cidr="24"):
     return str(ipaddress.IPv4Network(ip + f'/{cidr}', strict=False))
+
 
 def is_port_open(host, port, timeout=3.0):
     try:
@@ -31,8 +33,12 @@ def is_port_open(host, port, timeout=3.0):
     except OSError:
         return False
 
+
 def cleanup_ssh_tunnel(port):
-    subprocess.run(["pkill", "-f", f"ssh.*{port}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["pkill", "-f", f"ssh.*{port}"],
+                   stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL)
+
 
 def ensure_ssh_tunnel(master_pub_ip, master_priv_ip, local_port):
     if is_port_open("127.0.0.1", local_port):
@@ -49,8 +55,15 @@ def ensure_ssh_tunnel(master_pub_ip, master_priv_ip, local_port):
         time.sleep(1)
     sys.exit(1)
 
+
+# --- Terraform output ---
 with open("terraform-output.json", "w") as outfile:
-    subprocess.run(["terraform", "output", "-json"], cwd=terraform_dir, stdout=outfile, check=True)
+    subprocess.run(
+        ["terraform", "output", "-json"],
+        cwd=terraform_dir,
+        stdout=outfile,
+        check=True
+    )
 
 with open("terraform-output.json", "r") as f:
     tf_output = json.load(f)
@@ -64,12 +77,14 @@ master_priv_ip = master_private_ips[0]
 master_pub_ip = master_public_ips[0]
 print(f"master_pub_ip = {master_pub_ip}")
 
+# --- API IP ---
 if use_public_api:
     api_server_ip = master_pub_ip
 else:
     ensure_ssh_tunnel(master_pub_ip, master_priv_ip, ssh_tunnel_port)
     api_server_ip = "127.0.0.1"
 
+# --- Routes ---
 all_ips = master_private_ips + worker_private_ips
 all_subnets = sorted(set(get_subnet(ip) for ip in all_ips))
 master_subnet = get_subnet(master_priv_ip)
@@ -80,6 +95,7 @@ for subnet in all_subnets:
         gw = str(ipaddress.ip_network(subnet)[0] + 1)
         master_routes.append({"to": subnet, "via": gw})
 
+# --- Inventory structure ---
 inventory = {
     "all": {
         "hosts": {},
@@ -87,7 +103,12 @@ inventory = {
             "ansible_python_interpreter": "/usr/bin/python3",
             "kube_network_plugin": "calico",
             "ansible_become": True,
-            "public_api_ip": master_priv_ip,
+            "public_api_ip": master_pub_ip,
+            "loadbalancer_apiserver": {
+                "address": master_pub_ip,
+                "port": 6443
+            },
+            "kubeadm_config_api_fqdn": master_pub_ip
         },
         "children": {
             "kube_control_plane": {"hosts": {}},
@@ -99,12 +120,12 @@ inventory = {
                     "kube_node": {}
                 }
             },
-            # "bastion": {"hosts": {}},
             "calico_rr": {"hosts": {}}
         }
     }
 }
 
+# --- Master entry ---
 master_entry = {
     "ansible_host": master_pub_ip,
     "ip": master_priv_ip,
@@ -117,9 +138,9 @@ master_entry = {
 
 inventory["all"]["children"]["kube_control_plane"]["hosts"]["master"] = master_entry
 inventory["all"]["children"]["etcd"]["hosts"]["master"] = master_entry
-# inventory["all"]["children"]["bastion"]["hosts"]["bastion"] = master_entry
 inventory["all"]["hosts"]["master"] = master_entry
 
+# --- Workers ---
 for i, (priv_ip, pub_ip) in enumerate(zip(worker_private_ips, worker_public_ips), start=1):
     name = f"worker{i}"
     subnet = get_subnet(priv_ip)
@@ -140,21 +161,41 @@ for i, (priv_ip, pub_ip) in enumerate(zip(worker_private_ips, worker_public_ips)
     inventory["all"]["children"]["kube_node"]["hosts"][name] = worker_entry
     inventory["all"]["hosts"][name] = worker_entry
 
+# --- Save inventory ---
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 with open(output_path, "w") as f:
     yaml.dump(inventory, f, default_flow_style=False, sort_keys=False)
 
+# --- Create etcd.yml ---
+etcd_group_vars_dir = os.path.join(os.path.dirname(output_path), "group_vars")
+os.makedirs(etcd_group_vars_dir, exist_ok=True)
+
+etcd_file_path = os.path.join(etcd_group_vars_dir, "etcd.yml")
+
+etcd_config = {
+    "etcd_deployment_type": "host",
+    "etcd_data_dir": "/var/lib/etcd"
+}
+
+with open(etcd_file_path, "w") as etcd_file:
+    yaml.dump(etcd_config, etcd_file, default_flow_style=False, sort_keys=False)
+
+print(f"etcd.yml created at {etcd_file_path}")
+
+# --- Run playbooks ---
 subprocess.run(["ansible-playbook", "-i", output_path, "reset_k8s.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "add_ssh_keys.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "install_kube_tools.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "playbooks/cluster.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "create_kubeadm.yml"], check=True)
 
+# --- Print inventory ---
 with open(output_path, "r") as f:
     content = f.read()
     print("=== Written inventory/mycluster/hosts.yaml content ===")
     print(content)
 
+# --- Kubeconfig ---
 os.makedirs(kube_dir, exist_ok=True)
 subprocess.run(["cp", admin_conf_path, kube_config], check=True)
 
@@ -172,6 +213,7 @@ with open(bashrc, "a") as f:
     f.write(f"\nexport KUBECONFIG={kube_config}\n")
 os.environ["KUBECONFIG"] = kube_config
 
+# --- Verify ---
 subprocess.run(["kubectl", "cluster-info"])
 subprocess.run(["kubectl", "get", "nodes"])
 subprocess.run(["kubectl", "get", "pods", "--all-namespaces"])

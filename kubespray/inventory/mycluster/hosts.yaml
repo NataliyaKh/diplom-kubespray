@@ -38,7 +38,11 @@ all:
     ansible_python_interpreter: /usr/bin/python3
     kube_network_plugin: calico
     ansible_become: true
-    public_api_ip: 10.10.0.18
+    public_api_ip: 130.193.50.241
+    loadbalancer_apiserver:
+      address: 130.193.50.241
+      port: 6443
+    kubeadm_config_api_fqdn: 130.193.50.241
   children:
     kube_control_plane:
       hosts:
