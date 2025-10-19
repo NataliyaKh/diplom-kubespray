@@ -1,9 +1,43 @@
 ---
-- name: Common tasks for every playbooks
+- name: Common tasks for every playbook
   import_playbook: boilerplate.yml
 
 - name: Gather facts
   import_playbook: internal_facts.yml
+
+- name: Pre-clean cluster state
+  hosts: k8s_cluster
+  gather_facts: no
+  become: true
+  tasks:
+    - name: Stop kubelet if running
+      ansible.builtin.systemd:
+        name: kubelet
+        state: stopped
+      ignore_errors: yes
+
+    - name: Stop containerd if running
+      ansible.builtin.systemd:
+        name: containerd
+        state: stopped
+      ignore_errors: yes
+
+    - name: Kill hanging processes on API ports
+      ansible.builtin.shell: |
+        fuser -k 6443/tcp 10250/tcp 10257/tcp 10259/tcp || true
+      ignore_errors: yes
+
+    - name: Remove old kube manifests and etcd
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/kubernetes
+        - /var/lib/etcd
+        - /var/lib/kubelet
+        - /var/lib/cni
+        - /run/kubernetes
+      ignore_errors: yes
 
 - name: Prepare for etcd install
   hosts: k8s_cluster:etcd
@@ -36,6 +70,8 @@
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
+  vars:
+    kubeadm_init_retry_timeout: 600
   roles:
     - { role: kubespray_defaults }
     - { role: kubernetes/control-plane, tags: control-plane }
@@ -47,9 +83,11 @@
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
+  vars:
+    kubeadm_init_retry_timeout: 600
   roles:
     - { role: kubespray_defaults }
-    - { role: kubernetes/kubeadm, tags: kubeadm}
+    - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: kubernetes/node-label, tags: node-label }
     - { role: kubernetes/node-taint, tags: node-taint }
     - { role: kubernetes-apps/common_crds }
@@ -63,15 +101,6 @@
   roles:
     - { role: kubespray_defaults }
     - { role: network_plugin/calico/rr, tags: ['network', 'calico_rr'] }
-
-- name: Patch Kubernetes for Windows
-  hosts: kube_control_plane[0]
-  gather_facts: false
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray_defaults }
-    - { role: win_nodes/kubernetes_patch, tags: ["control-plane", "win_nodes"] }
 
 - name: Install Kubernetes apps
   hosts: kube_control_plane

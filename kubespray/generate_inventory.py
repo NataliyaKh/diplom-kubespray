@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import json
 import yaml
 import subprocess
@@ -21,10 +20,8 @@ admin_conf_path = os.path.join(inv_dir, "artifacts", "admin.conf")
 kube_dir = os.path.expanduser("~/.kube")
 kube_config = os.path.join(kube_dir, "config")
 
-
 def get_subnet(ip, cidr="24"):
     return str(ipaddress.IPv4Network(ip + f'/{cidr}', strict=False))
-
 
 def is_port_open(host, port, timeout=3.0):
     try:
@@ -33,12 +30,10 @@ def is_port_open(host, port, timeout=3.0):
     except OSError:
         return False
 
-
 def cleanup_ssh_tunnel(port):
     subprocess.run(["pkill", "-f", f"ssh.*{port}"],
                    stdout=subprocess.DEVNULL,
                    stderr=subprocess.DEVNULL)
-
 
 def ensure_ssh_tunnel(master_pub_ip, master_priv_ip, local_port):
     if is_port_open("127.0.0.1", local_port):
@@ -53,17 +48,12 @@ def ensure_ssh_tunnel(master_pub_ip, master_priv_ip, local_port):
         if is_port_open("127.0.0.1", local_port):
             return
         time.sleep(1)
+    print("SSH tunnel failed to establish")
     sys.exit(1)
-
 
 # --- Terraform output ---
 with open("terraform-output.json", "w") as outfile:
-    subprocess.run(
-        ["terraform", "output", "-json"],
-        cwd=terraform_dir,
-        stdout=outfile,
-        check=True
-    )
+    subprocess.run(["terraform", "output", "-json"], cwd=terraform_dir, stdout=outfile, check=True)
 
 with open("terraform-output.json", "r") as f:
     tf_output = json.load(f)
@@ -84,6 +74,8 @@ else:
     ensure_ssh_tunnel(master_pub_ip, master_priv_ip, ssh_tunnel_port)
     api_server_ip = "127.0.0.1"
 
+control_plane_endpoint = f"{api_server_ip}:{api_server_target_port}"
+
 # --- Routes ---
 all_ips = master_private_ips + worker_private_ips
 all_subnets = sorted(set(get_subnet(ip) for ip in all_ips))
@@ -95,7 +87,7 @@ for subnet in all_subnets:
         gw = str(ipaddress.ip_network(subnet)[0] + 1)
         master_routes.append({"to": subnet, "via": gw})
 
-# --- Inventory structure ---
+# --- Inventory ---
 inventory = {
     "all": {
         "hosts": {},
@@ -105,10 +97,12 @@ inventory = {
             "ansible_become": True,
             "public_api_ip": master_pub_ip,
             "loadbalancer_apiserver": {
-                "address": master_pub_ip,
-                "port": 6443
+                "address": api_server_ip,
+                "port": api_server_target_port
             },
-            "kubeadm_config_api_fqdn": master_pub_ip
+            "kubeadm_config_api_fqdn": api_server_ip,
+            "control_plane_endpoint": control_plane_endpoint,
+            "kubeadm_init_retry_timeout": 600
         },
         "children": {
             "kube_control_plane": {"hosts": {}},
@@ -125,7 +119,7 @@ inventory = {
     }
 }
 
-# --- Master entry ---
+# --- Master ---
 master_entry = {
     "ansible_host": master_pub_ip,
     "ip": master_priv_ip,
@@ -135,7 +129,6 @@ master_entry = {
     "subnet": master_subnet,
     "ansible_ssh_common_args": ""
 }
-
 inventory["all"]["children"]["kube_control_plane"]["hosts"]["master"] = master_entry
 inventory["all"]["children"]["etcd"]["hosts"]["master"] = master_entry
 inventory["all"]["hosts"]["master"] = master_entry
@@ -149,7 +142,6 @@ for i, (priv_ip, pub_ip) in enumerate(zip(worker_private_ips, worker_public_ips)
         if sn != subnet:
             gw = str(ipaddress.ip_network(sn)[0] + 1)
             worker_routes.append({"to": sn, "via": gw})
-
     worker_entry = {
         "ansible_host": pub_ip,
         "ip": priv_ip,
@@ -166,54 +158,49 @@ os.makedirs(os.path.dirname(output_path), exist_ok=True)
 with open(output_path, "w") as f:
     yaml.dump(inventory, f, default_flow_style=False, sort_keys=False)
 
-# --- Create etcd.yml ---
+# --- etcd.yml ---
 etcd_group_vars_dir = os.path.join(os.path.dirname(output_path), "group_vars")
 os.makedirs(etcd_group_vars_dir, exist_ok=True)
-
 etcd_file_path = os.path.join(etcd_group_vars_dir, "etcd.yml")
-
 etcd_config = {
     "etcd_deployment_type": "host",
     "etcd_data_dir": "/var/lib/etcd"
 }
-
 with open(etcd_file_path, "w") as etcd_file:
     yaml.dump(etcd_config, etcd_file, default_flow_style=False, sort_keys=False)
-
 print(f"etcd.yml created at {etcd_file_path}")
 
 # --- Run playbooks ---
+print(">>> Running Ansible playbooks...")
 subprocess.run(["ansible-playbook", "-i", output_path, "reset_k8s.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "add_ssh_keys.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "install_kube_tools.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "playbooks/cluster.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "create_kubeadm.yml"], check=True)
 
-# --- Print inventory ---
+# --- Show inventory ---
 with open(output_path, "r") as f:
     content = f.read()
     print("=== Written inventory/mycluster/hosts.yaml content ===")
     print(content)
 
-# --- Kubeconfig ---
+# --- kubeconfig ---
 os.makedirs(kube_dir, exist_ok=True)
-subprocess.run(["cp", admin_conf_path, kube_config], check=True)
-
-subprocess.run([
-    "sed", "-i",
-    rf"s|https://.*:{api_server_target_port}|https://127.0.0.1:{ssh_tunnel_port}|",
-    kube_config
-], check=True)
-
-subprocess.run(["rm", "-rf", os.path.expanduser("~/.kube/cache")])
-
-bashrc = os.path.expanduser("~/.bashrc")
-subprocess.run(["sed", "-i", "/KUBECONFIG/d", bashrc], check=False)
-with open(bashrc, "a") as f:
-    f.write(f"\nexport KUBECONFIG={kube_config}\n")
-os.environ["KUBECONFIG"] = kube_config
-
-# --- Verify ---
-subprocess.run(["kubectl", "cluster-info"])
-subprocess.run(["kubectl", "get", "nodes"])
-subprocess.run(["kubectl", "get", "pods", "--all-namespaces"])
+if os.path.exists(admin_conf_path):
+    subprocess.run(["cp", admin_conf_path, kube_config], check=True)
+    subprocess.run([
+        "sed", "-i",
+        rf"s|https://.*:{api_server_target_port}|https://127.0.0.1:{ssh_tunnel_port}|",
+        kube_config
+    ], check=True)
+    subprocess.run(["rm", "-rf", os.path.expanduser("~/.kube/cache")])
+    bashrc = os.path.expanduser("~/.bashrc")
+    subprocess.run(["sed", "-i", "/KUBECONFIG/d", bashrc], check=False)
+    with open(bashrc, "a") as f:
+        f.write(f"\nexport KUBECONFIG={kube_config}\n")
+    os.environ["KUBECONFIG"] = kube_config
+    subprocess.run(["kubectl", "cluster-info"])
+    subprocess.run(["kubectl", "get", "nodes"])
+    subprocess.run(["kubectl", "get", "pods", "--all-namespaces"])
+else:
+    print("admin.conf not found — kubeconfig not copied")
