@@ -172,6 +172,7 @@ print(f"etcd.yml created at {etcd_file_path}")
 
 # --- Run playbooks ---
 print(">>> Running Ansible playbooks...")
+subprocess.run(["ansible-playbook", "-i", output_path, "pre_cleanup.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "reset_k8s.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "add_ssh_keys.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "install_kube_tools.yml"], check=True)
