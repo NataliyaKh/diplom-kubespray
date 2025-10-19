@@ -1,0 +1,58 @@
+all:
+  hosts:
+    master: &id001
+      ansible_host: 130.193.50.241
+      ip: 10.10.0.18
+      access_ip: 10.10.0.18
+      ansible_user: ubuntu
+      routes_to_add:
+      - to: 10.20.0.0/24
+        via: 10.20.0.1
+      - to: 10.30.0.0/24
+        via: 10.30.0.1
+      subnet: 10.10.0.0/24
+      ansible_ssh_common_args: ''
+    worker1: &id002
+      ansible_host: 89.169.173.221
+      ip: 10.20.0.24
+      access_ip: 10.20.0.24
+      ansible_user: ubuntu
+      routes_to_add:
+      - to: 10.10.0.0/24
+        via: 10.10.0.1
+      - to: 10.30.0.0/24
+        via: 10.30.0.1
+      subnet: 10.20.0.0/24
+    worker2: &id003
+      ansible_host: 158.160.198.104
+      ip: 10.30.0.8
+      access_ip: 10.30.0.8
+      ansible_user: ubuntu
+      routes_to_add:
+      - to: 10.10.0.0/24
+        via: 10.10.0.1
+      - to: 10.20.0.0/24
+        via: 10.20.0.1
+      subnet: 10.30.0.0/24
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    kube_network_plugin: calico
+    ansible_become: true
+    public_api_ip: 10.10.0.18
+  children:
+    kube_control_plane:
+      hosts:
+        master: *id001
+    kube_node:
+      hosts:
+        worker1: *id002
+        worker2: *id003
+    etcd:
+      hosts:
+        master: *id001
+    k8s_cluster:
+      children:
+        kube_control_plane: {}
+        kube_node: {}
+    calico_rr:
+      hosts: {}

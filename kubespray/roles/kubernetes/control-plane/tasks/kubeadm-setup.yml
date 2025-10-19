@@ -87,7 +87,6 @@
   when: kube_apiserver_tracing
   notify: Control plane | Restart apiserver
 
-# Nginx LB(default), If kubeadm_config_api_fqdn is defined, use other LB by kubeadm controlPlaneEndpoint.
 - name: Set kubeadm_config_api_fqdn define
   set_fact:
     kubeadm_config_api_fqdn: "{{ apiserver_loadbalancer_domain_name | default('lb-apiserver.kubernetes.local') }}"
@@ -141,6 +140,7 @@
       register: apiserver_sans_ip_check
       changed_when: apiserver_sans_ip_check.stdout is not search('does match certificate')
       failed_when: apiserver_sans_ip_check.rc != 0 and apiserver_sans_ip_check.stdout is not search('does NOT match certificate')
+
     - name: Kubeadm | Check apiserver.crt SAN hosts
       command:
         cmd: "openssl x509 -noout -in {{ kube_cert_dir }}/apiserver.crt -checkhost {{ item }}"
@@ -171,7 +171,6 @@
     - apiserver_sans_ip_check.changed or apiserver_sans_host_check.changed
     - not kube_external_ca_mode
 
-  # TODO: Remove --skip-phases from command when v1beta4 UpgradeConfiguration supports skipPhases
 - name: Kubeadm | Initialize first control plane node
   when: inventory_hostname == first_kube_control_plane and not kubeadm_already_run.stat.exists
   vars:
@@ -191,72 +190,39 @@
       register: kubeadm_init
       failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   rescue:
-    # Retry is because upload config sometimes fails
-    # This retry task is separated from 1st task to show log of failure of 1st task.
     - name: Kubeadm | Initialize first control plane node (retry)
       command: "{{ kubeadm_init_first_control_plane_cmd }}"
       register: kubeadm_init
       retries: 2
-      until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
+      delay: 10
+      until: kubeadm_init.rc == 0 or "field is immutable" in kubeadm_init.stderr
       failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
 
-- name: Set kubeadm certificate key
-  set_fact:
-    kubeadm_certificate_key: "{{ item | regex_search('--certificate-key ([^ ]+)', '\\1') | first }}"
-  with_items: "{{ hostvars[groups['kube_control_plane'][0]]['kubeadm_init'].stdout_lines | default([]) }}"
-  when:
-    - kubeadm_certificate_key is not defined
-    - (item | trim) is match('.*--certificate-key.*')
-
-- name: Create hardcoded kubeadm token for joining nodes with 24h expiration (if defined)
-  shell: >-
-    {{ bin_dir }}/kubeadm --kubeconfig {{ kube_config_dir }}/admin.conf token delete {{ kubeadm_token }} || :;
-    {{ bin_dir }}/kubeadm --kubeconfig {{ kube_config_dir }}/admin.conf token create {{ kubeadm_token }}
+- name: Kubeadm | Save join command
+  shell: >
+    {{ bin_dir }}/kubeadm token create --print-join-command
+  register: kubeadm_join_cmd
+  when: inventory_hostname == first_kube_control_plane
   changed_when: false
+
+- name: Kubeadm | Write join command to file
+  copy:
+    content: "{{ kubeadm_join_cmd.stdout }}"
+    dest: "/tmp/kubeadm_join_cmd.sh"
+    mode: '0755'
+  when: inventory_hostname == first_kube_control_plane
+
+- name: Kubeadm | Join additional control plane nodes
+  command: >
+    {{ bin_dir }}/kubeadm join
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+    --control-plane
   when:
-    - inventory_hostname == first_kube_control_plane
-    - kubeadm_token is defined
-    - kubeadm_refresh_token
-  tags:
-    - kubeadm_token
+    - inventory_hostname != first_kube_control_plane
+    - "'kubeadm join' not in ansible_local.kubeadm_join | default('')"
+  register: kubeadm_join
 
-- name: Remove binding to anonymous user
-  command: "{{ kubectl }} -n kube-public delete rolebinding kubeadm:bootstrap-signer-clusterinfo --ignore-not-found"
-  when: inventory_hostname == first_kube_control_plane and remove_anonymous_access
-
-- name: Create kubeadm token for joining nodes with 24h expiration (default)
-  command: "{{ bin_dir }}/kubeadm --kubeconfig {{ kube_config_dir }}/admin.conf token create"
-  changed_when: false
-  register: temp_token
-  retries: 5
-  delay: 5
-  until: temp_token is succeeded
-  delegate_to: "{{ first_kube_control_plane }}"
-  when: kubeadm_token is not defined
-  tags:
-    - kubeadm_token
-
-- name: Set kubeadm_token
-  set_fact:
-    kubeadm_token: "{{ temp_token.stdout }}"
-  when: temp_token.stdout is defined
-  tags:
-    - kubeadm_token
-
-- name: Kubeadm | Join other control plane nodes
-  include_tasks: kubeadm-secondary.yml
-
-- name: Kubeadm | upgrade kubernetes cluster to {{ kube_version }}
-  include_tasks: kubeadm-upgrade.yml
-  when:
-    - upgrade_cluster_setup
-    - kubeadm_already_run.stat.exists
-
-# FIXME(mattymo): from docs: If you don't want to taint your control-plane node, set this field to an empty slice, i.e. `taints: {}` in the YAML file.
-- name: Kubeadm | Remove taint for control plane node with node role
-  command: "{{ kubectl }} taint node {{ inventory_hostname }} {{ item }}"
-  delegate_to: "{{ first_kube_control_plane }}"
-  with_items:
-    - "node-role.kubernetes.io/control-plane:NoSchedule-"
-  when: ('kube_node' in group_names)
-  failed_when: false
+- name: Kubeadm | Write kubeconfig for all control plane nodes
+  command: >
+    {{ bin_dir }}/kubectl --kubeconfig={{ kube_config_dir }}/admin.conf get nodes
+  when: inventory_hostname == first_kube_control_plane

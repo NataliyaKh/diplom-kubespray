@@ -1,0 +1,41 @@
+---
+- name: Reset Kubernetes
+  hosts: all
+  become: yes
+  tasks:
+    - name: Stop kubelet
+      systemd:
+        name: kubelet
+        state: stopped
+        enabled: no
+
+    - name: Reset kubeadm
+      command: kubeadm reset -f
+      ignore_errors: yes
+
+    - name: Remove Kubernetes dirs
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/kubernetes
+        - /var/lib/etcd
+        - /var/lib/kubelet
+        - /var/lib/cni
+        - /run/kubernetes
+
+    - name: Swapoff
+      command: swapoff -a
+      ignore_errors: yes
+
+    - name: Correct /etc/fstab
+      replace:
+        path: /etc/fstab
+        regexp: '^([^#].* swap .*)$'
+        replace: '#\\1'
+
+    - name: Ensure kubelet started
+      systemd:
+        name: kubelet
+        state: started
+        enabled: yes

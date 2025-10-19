@@ -87,7 +87,7 @@ inventory = {
             "ansible_python_interpreter": "/usr/bin/python3",
             "kube_network_plugin": "calico",
             "ansible_become": True,
-            "public_api_ip": api_server_ip,
+            "public_api_ip": master_priv_ip,
         },
         "children": {
             "kube_control_plane": {"hosts": {}},
@@ -99,7 +99,7 @@ inventory = {
                     "kube_node": {}
                 }
             },
-            "bastion": {"hosts": {}},
+            # "bastion": {"hosts": {}},
             "calico_rr": {"hosts": {}}
         }
     }
@@ -117,7 +117,7 @@ master_entry = {
 
 inventory["all"]["children"]["kube_control_plane"]["hosts"]["master"] = master_entry
 inventory["all"]["children"]["etcd"]["hosts"]["master"] = master_entry
-inventory["all"]["children"]["bastion"]["hosts"]["bastion"] = master_entry
+# inventory["all"]["children"]["bastion"]["hosts"]["bastion"] = master_entry
 inventory["all"]["hosts"]["master"] = master_entry
 
 for i, (priv_ip, pub_ip) in enumerate(zip(worker_private_ips, worker_public_ips), start=1):
@@ -144,6 +144,7 @@ os.makedirs(os.path.dirname(output_path), exist_ok=True)
 with open(output_path, "w") as f:
     yaml.dump(inventory, f, default_flow_style=False, sort_keys=False)
 
+subprocess.run(["ansible-playbook", "-i", output_path, "reset_k8s.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "add_ssh_keys.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "install_kube_tools.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "playbooks/cluster.yml"], check=True)

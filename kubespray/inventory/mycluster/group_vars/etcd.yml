@@ -1,0 +1,2 @@
+---
+etcd_deployment_type: kubeadm
