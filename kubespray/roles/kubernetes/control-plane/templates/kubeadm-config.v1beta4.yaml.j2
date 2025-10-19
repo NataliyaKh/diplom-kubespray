@@ -564,9 +564,7 @@ featureGates:
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 clusterDNS:
-{% for dns_address in kubelet_cluster_dns %}
-- {{ dns_address }}
-{% endfor %}
+- 10.233.0.10
 {% if kubelet_feature_gates or kube_feature_gates %}
 {% set feature_gates = ( kubelet_feature_gates | default(kube_feature_gates, true) ) %}
 featureGates:
