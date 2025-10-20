@@ -7,5 +7,5 @@
     - name: Add lb-apiserver entry to /etc/hosts
       lineinfile:
         path: /etc/hosts
-        line: "10.10.0.9 lb-apiserver.kubernetes.local"
+        line: "{{ loadbalancer_apiserver.address }} lb-apiserver.kubernetes.local"
         state: present

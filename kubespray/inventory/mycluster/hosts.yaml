@@ -1,9 +1,9 @@
 all:
   hosts:
     master: &id001
-      ansible_host: 84.201.134.219
-      ip: 10.10.0.9
-      access_ip: 10.10.0.9
+      ansible_host: 84.201.130.56
+      ip: 10.10.0.4
+      access_ip: 10.10.0.4
       ansible_user: ubuntu
       routes_to_add:
       - to: 10.20.0.0/24
@@ -13,9 +13,9 @@ all:
       subnet: 10.10.0.0/24
       ansible_ssh_common_args: ''
     worker1: &id002
-      ansible_host: 158.160.16.29
-      ip: 10.20.0.24
-      access_ip: 10.20.0.24
+      ansible_host: 89.169.179.192
+      ip: 10.20.0.20
+      access_ip: 10.20.0.20
       ansible_user: ubuntu
       routes_to_add:
       - to: 10.10.0.0/24
@@ -24,9 +24,9 @@ all:
         via: 10.30.0.1
       subnet: 10.20.0.0/24
     worker2: &id003
-      ansible_host: 130.193.57.203
-      ip: 10.30.0.25
-      access_ip: 10.30.0.25
+      ansible_host: 158.160.205.240
+      ip: 10.30.0.23
+      access_ip: 10.30.0.23
       ansible_user: ubuntu
       routes_to_add:
       - to: 10.10.0.0/24
@@ -38,12 +38,13 @@ all:
     ansible_python_interpreter: /usr/bin/python3
     kube_network_plugin: calico
     ansible_become: true
-    public_api_ip: 84.201.134.219
+    api_server_port: 6443
+    public_api_ip: 84.201.130.56
     loadbalancer_apiserver:
-      address: 84.201.134.219
+      address: 10.10.0.4
       port: 6443
-    kubeadm_config_api_fqdn: 84.201.134.219
-    control_plane_endpoint: 84.201.134.219:6443
+    kubeadm_config_api_fqdn: 10.10.0.4
+    control_plane_endpoint: 10.10.0.4:6443
     kubeadm_init_retry_timeout: 600
   children:
     kube_control_plane:

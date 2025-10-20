@@ -1,55 +1,26 @@
 #!/usr/bin/env python3
+
 import json
 import yaml
 import subprocess
 import ipaddress
-import sys
 import os
-import socket
-import time
 
+# --- Settings ---
 terraform_dir = "/home/vboxuser/git/diplom/diplom-k8s/nodes"
 output_path = "inventory/mycluster/hosts.yaml"
 ssh_user = "ubuntu"
-ssh_tunnel_port = 16443
 api_server_target_port = 6443
-use_public_api = True
 
 inv_dir = os.path.dirname(output_path)
 admin_conf_path = os.path.join(inv_dir, "artifacts", "admin.conf")
 kube_dir = os.path.expanduser("~/.kube")
 kube_config = os.path.join(kube_dir, "config")
 
+
 def get_subnet(ip, cidr="24"):
     return str(ipaddress.IPv4Network(ip + f'/{cidr}', strict=False))
 
-def is_port_open(host, port, timeout=3.0):
-    try:
-        with socket.create_connection((host, port), timeout=timeout):
-            return True
-    except OSError:
-        return False
-
-def cleanup_ssh_tunnel(port):
-    subprocess.run(["pkill", "-f", f"ssh.*{port}"],
-                   stdout=subprocess.DEVNULL,
-                   stderr=subprocess.DEVNULL)
-
-def ensure_ssh_tunnel(master_pub_ip, master_priv_ip, local_port):
-    if is_port_open("127.0.0.1", local_port):
-        return
-    cleanup_ssh_tunnel(local_port)
-    subprocess.Popen([
-        "ssh", "-f", "-N",
-        "-L", f"{local_port}:{master_priv_ip}:{api_server_target_port}",
-        f"{ssh_user}@{master_pub_ip}"
-    ])
-    for _ in range(10):
-        if is_port_open("127.0.0.1", local_port):
-            return
-        time.sleep(1)
-    print("SSH tunnel failed to establish")
-    sys.exit(1)
 
 # --- Terraform output ---
 with open("terraform-output.json", "w") as outfile:
@@ -68,12 +39,7 @@ master_pub_ip = master_public_ips[0]
 print(f"master_pub_ip = {master_pub_ip}")
 
 # --- API IP ---
-if use_public_api:
-    api_server_ip = master_pub_ip
-else:
-    ensure_ssh_tunnel(master_pub_ip, master_priv_ip, ssh_tunnel_port)
-    api_server_ip = "127.0.0.1"
-
+api_server_ip = master_priv_ip
 control_plane_endpoint = f"{api_server_ip}:{api_server_target_port}"
 
 # --- Routes ---
@@ -95,12 +61,13 @@ inventory = {
             "ansible_python_interpreter": "/usr/bin/python3",
             "kube_network_plugin": "calico",
             "ansible_become": True,
+            "api_server_port": api_server_target_port,
             "public_api_ip": master_pub_ip,
             "loadbalancer_apiserver": {
-                "address": api_server_ip,
+                "address": master_priv_ip,
                 "port": api_server_target_port
             },
-            "kubeadm_config_api_fqdn": api_server_ip,
+            "kubeadm_config_api_fqdn": master_priv_ip,
             "control_plane_endpoint": control_plane_endpoint,
             "kubeadm_init_retry_timeout": 600
         },
@@ -148,7 +115,7 @@ for i, (priv_ip, pub_ip) in enumerate(zip(worker_private_ips, worker_public_ips)
         "access_ip": priv_ip,
         "ansible_user": ssh_user,
         "routes_to_add": worker_routes,
-        "subnet": subnet,
+        "subnet": subnet
     }
     inventory["all"]["children"]["kube_node"]["hosts"][name] = worker_entry
     inventory["all"]["hosts"][name] = worker_entry
@@ -172,8 +139,6 @@ print(f"etcd.yml created at {etcd_file_path}")
 
 # --- Run playbooks ---
 print(">>> Running Ansible playbooks...")
-subprocess.run(["ansible-playbook", "-i", output_path, "pre_cleanup.yml"], check=True)
-subprocess.run(["ansible-playbook", "-i", output_path, "reset_k8s.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "add_ssh_keys.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "install_kube_tools.yml"], check=True)
 subprocess.run(["ansible-playbook", "-i", output_path, "playbooks/cluster.yml"], check=True)
@@ -189,11 +154,6 @@ with open(output_path, "r") as f:
 os.makedirs(kube_dir, exist_ok=True)
 if os.path.exists(admin_conf_path):
     subprocess.run(["cp", admin_conf_path, kube_config], check=True)
-    subprocess.run([
-        "sed", "-i",
-        rf"s|https://.*:{api_server_target_port}|https://127.0.0.1:{ssh_tunnel_port}|",
-        kube_config
-    ], check=True)
     subprocess.run(["rm", "-rf", os.path.expanduser("~/.kube/cache")])
     bashrc = os.path.expanduser("~/.bashrc")
     subprocess.run(["sed", "-i", "/KUBECONFIG/d", bashrc], check=False)
@@ -204,4 +164,4 @@ if os.path.exists(admin_conf_path):
     subprocess.run(["kubectl", "get", "nodes"])
     subprocess.run(["kubectl", "get", "pods", "--all-namespaces"])
 else:
-    print("admin.conf not found — kubeconfig not copied")
+    print("Warning: admin.conf not found, skipping kubeconfig copy.")

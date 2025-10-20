@@ -640,7 +640,7 @@ first_kube_control_plane_address: "{{ hostvars[groups['kube_control_plane'][0]][
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
 loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
-apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
+apiserver_loadbalancer_domain_name: "{{ loadbalancer_apiserver.address }}"
 kube_apiserver_global_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
       https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}

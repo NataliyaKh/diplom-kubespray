@@ -140,6 +140,7 @@
       register: apiserver_sans_ip_check
       changed_when: apiserver_sans_ip_check.stdout is not search('does match certificate')
       failed_when: apiserver_sans_ip_check.rc != 0 and apiserver_sans_ip_check.stdout is not search('does NOT match certificate')
+      ignore_errors: true
 
     - name: Kubeadm | Check apiserver.crt SAN hosts
       command:
@@ -148,6 +149,7 @@
       register: apiserver_sans_host_check
       changed_when: apiserver_sans_host_check.stdout is not search('does match certificate')
       failed_when: apiserver_sans_host_check.rc != 0 and apiserver_sans_host_check.stdout is not search('does NOT match certificate')
+      ignore_errors: true
 
 - name: Kubeadm | regenerate apiserver cert 1/2
   file:

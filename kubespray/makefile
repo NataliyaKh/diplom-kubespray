@@ -18,13 +18,7 @@ tunnel:
 
 reset:
 	@echo ">>> Cleaning Kubernetes cluster on all nodes..."
-	ansible-playbook -i inventory/mycluster/hosts.yaml reset_k8s.yml || true
-	@echo ">>> Manual cleanup on localhost (safety net)..."
-	sudo kubeadm reset -f || true
-	sudo systemctl stop kubelet || true
-	sudo crictl rm -af || true
-	sudo fuser -k 6443/tcp 10257/tcp 10259/tcp 10250/tcp || true
-	sudo rm -rf /etc/kubernetes /var/lib/etcd /var/lib/kubelet /var/lib/cni /run/kubernetes ~/.kube || true
+	ansible-playbook -i inventory/mycluster/hosts.yaml cleanup.yml
 
 install: tunnel
 	@echo ">>> Generating fresh inventory..."

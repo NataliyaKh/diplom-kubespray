@@ -1,0 +1,64 @@
+---
+- name: Full Kubernetes cleanup on nodes
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Kill processes on Kubernetes ports
+      shell: |
+        for p in 6443 10250 10257 10259; do
+          pid=$(lsof -ti tcp:$p || true)
+          if [ -n "$pid" ]; then
+            kill -9 $pid || true
+          fi
+        done
+      ignore_errors: true
+
+    - name: Stop kubelet and containerd if running
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      loop:
+        - kubelet
+        - containerd
+      ignore_errors: true
+
+    - name: kubeadm reset
+      command: kubeadm reset -f
+      ignore_errors: true
+
+    - name: Remove Kubernetes directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/kubernetes
+        - /var/lib/etcd
+        - /var/lib/kubelet
+        - /var/lib/cni
+        - /run/kubernetes
+      ignore_errors: true
+
+    - name: Swapoff
+      command: swapoff -a
+      ignore_errors: true
+
+    - name: Disable swap in fstab
+      replace:
+        path: /etc/fstab
+        regexp: '^([^#].* swap .*)$'
+        replace: '#\1'
+      ignore_errors: true
+
+    - name: Start containerd
+      systemd:
+        name: containerd
+        state: started
+      ignore_errors: true
+
+    - name: Start kubelet
+      systemd:
+        name: kubelet
+        state: started
+      ignore_errors: true
