@@ -1,0 +1,2 @@
+ansible_environment:
+  KUBECONFIG: /etc/kubernetes/admin.conf

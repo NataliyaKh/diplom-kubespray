@@ -1,0 +1,36 @@
+---
+- hosts: kube_control_plane
+  become: true
+  tasks:
+    - name: Ensure /etc/kubernetes/pki exists
+      file:
+        path: /etc/kubernetes/pki
+        state: directory
+        mode: '0755'
+
+    - name: Check if CA already exists
+      stat:
+        path: /etc/kubernetes/pki/ca.crt
+      register: ca_stat
+
+    - name: Download CA cert from S3
+      get_url:
+        url: "https://storage.yandexcloud.net/{{ s3_bucket_name }}/ca/ca.crt"
+        dest: /etc/kubernetes/pki/ca.crt
+        mode: '0644'
+      when: not ca_stat.stat.exists
+
+    - name: Download CA key (only if not exists)
+      get_url:
+        url: "https://storage.yandexcloud.net/{{ s3_bucket_name }}/ca/ca.key"
+        dest: /etc/kubernetes/pki/ca.key
+        mode: '0600'
+      when: not ca_stat.stat.exists
+
+    - name: Check downloaded CA cert
+      stat:
+        path: /etc/kubernetes/pki/ca.crt
+      register: downloaded_ca
+
+    - debug:
+        var: downloaded_ca.stat.exists

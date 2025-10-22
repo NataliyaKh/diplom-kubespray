@@ -1,0 +1,9 @@
+---
+- hosts: kube_control_plane
+  become: true
+  tasks:
+    - name: Ensure /etc/hosts has master IP mapping
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ hostvars[inventory_hostname].ip }} master"
+        state: present

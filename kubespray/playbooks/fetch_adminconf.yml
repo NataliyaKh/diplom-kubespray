@@ -1,0 +1,19 @@
+---
+- name: Fetch admin.conf from master
+  hosts: kube_control_plane
+  become: true
+  tasks:
+    - name: Ensure local artifacts directory exists
+      run_once: true
+      delegate_to: localhost
+      file:
+        path: inventory/mycluster/artifacts
+        state: directory
+
+    - name: Fetch admin.conf from master
+      run_once: true
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: inventory/mycluster/artifacts/admin.conf
+        flat: true

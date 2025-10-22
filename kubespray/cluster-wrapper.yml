@@ -1,4 +1,5 @@
 ---
+
 - name: Pre-generate inventory and run Kubespray
   hosts: localhost
   connection: local
@@ -34,25 +35,29 @@
         python3 generate_inventory.py
         echo "After gen"
 
+
 - name: Run Kubespray cluster install
   import_playbook: "{{ kubespray_path }}/playbooks/cluster.yml"
 
+
 - name: Copy admin.conf to user's kube config
   copy:
-    src: /etc/kubernetes/admin.conf
+    src: "{{ kubespray_path }}/inventory/mycluster/artifacts/admin.conf"
     dest: /home/ubuntu/.kube/config
     owner: ubuntu
     group: ubuntu
     mode: 0600
   when: ansible_user == 'ubuntu'
 
+
 - name: Set KUBECONFIG environment variable
   lineinfile:
     path: /home/ubuntu/.bashrc
-    line: 'export KUBECONFIG=/etc/kubernetes/admin.conf'
+    line: 'export KUBECONFIG=$HOME/.kube/config'
     create: yes
     state: present
   when: ansible_user == 'ubuntu'
+
 
 - name: Set KUBECONFIG
   import_playbook: "{{ kubespray_path }}/playbooks/set-kubeconfig.yml"
