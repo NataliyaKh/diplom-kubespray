@@ -6,3 +6,5 @@ terraform.tfvars
 key.json
 vault_pass.*
 kubespray/ca/
+kubespray/inventory/mycluster/group_vars/all/s3.yml
+kubespray/terraform-output-sa_bucket.json
