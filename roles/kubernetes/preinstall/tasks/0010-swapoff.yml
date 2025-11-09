@@ -1,6 +1,6 @@
 ---
 - name: Check if /etc/fstab exists
-  stat:
+  ansible.builtin.stat:
     path: "/etc/fstab"
     get_attributes: no
     get_checksum: no
@@ -18,9 +18,9 @@
   when: fstab_file.stat.exists
 
 - name: Mask swap.target (persist swapoff)
-  ansible.builtin.systemd_service:
+  ansible.builtin.systemd:
     name: swap.target
     masked: true
 
 - name: Disable swap
-  command: /sbin/swapoff -a
+  ansible.builtin.command: /sbin/swapoff -a

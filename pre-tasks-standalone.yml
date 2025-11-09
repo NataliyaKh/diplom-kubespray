@@ -1,0 +1,51 @@
+---
+
+- import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/fix-network-config.yml 
+- import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/fix_centos_repos.yml
+- import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/install_docker_stable.yml 
+
+
+
+
+- name: Custom pre-installation tasks
+  hosts: all
+  gather_facts: yes
+  become: yes
+  tasks:
+    - name: DEBUG - Pre-tasks are running
+      debug:
+        msg: "CUSTOM PRE-TASKS EXECUTING on {{ inventory_hostname }}"
+
+          #    - name: Skip all hold operations by forcing empty lists
+          #      set_fact:
+          #        docker_hold_packages: []
+          #        package_hold_packages: []
+          #      run_once: true
+
+        #    - name: Install containerd.io separately
+        #      package:
+        #        name: containerd.io
+        #        state: present
+
+        #    - name: Include fix network config
+        #      import_tasks: "inventory/my-cluster/extra_playbooks/CENTOS/fix-network-config.yml"
+
+
+        #- name: Include fix centos repos
+        #   import_tasks: "inventory/my-cluster/extra_playbooks/CENTOS/fix_centos_repos.yml"
+    
+    
+        #    - name: Include fix cocker install
+        #      import_tasks: 
+        #        - "inventory/my-cluster/extra_playbooks/CENTOS/install_docker_stable.yml"
+    
+    - name: Install base packages
+      package:
+        name:
+          - curl
+          - wget
+          - vim
+          - htop
+        state: present
+      when: ansible_os_family == "RedHat"
+

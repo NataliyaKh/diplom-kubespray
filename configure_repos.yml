@@ -1,0 +1,15 @@
+---
+- name: Configure CentOS repositories
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install epel-release
+      dnf:
+        name: epel-release
+        state: present
+
+    - name: Clean dnf cache
+      command: dnf clean all
+
+    - name: Update package cache
+      command: dnf makecache

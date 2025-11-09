@@ -1,0 +1,33 @@
+---
+- name: Fix network
+  ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/fix-network-config.yml
+    
+- name: Fix centos
+  ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/fix_centos_repos.yml
+
+    #- name: install docker stable
+  #  ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/install_docker_stable.yml
+
+    #- name: Remove docker
+  #  ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/remove-docker.yml
+
+- name: Add users local path
+  ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/add-local-bin.yaml
+
+- name: Add root local path
+  ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/add-local-bin-root.yaml
+
+- name: Install Kubernetes
+  ansible.builtin.import_playbook: playbooks/cluster.yml
+
+- name: fix certs
+  ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/update_kubeadm_certificates.yml
+
+- name: Add root local path
+  ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/update_kubeadm_certificates_2.yml
+
+- name: Add root local path
+  ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/update_kubeadm_certificates_3_nodes_install_kubectl.yml
+
+- name: Add root local path
+  ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/update_kubeadm_certificates_4_copy_to_nodes.yml

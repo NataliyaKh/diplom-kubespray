@@ -91,40 +91,47 @@
     - ansible_distribution != "Fedora"
     - not is_ostree
 
-- name: Remove dpkg hold
-  dpkg_selections:
-    name: "{{ item }}"
-    selection: install
-  when: ansible_pkg_mgr == 'apt'
-  changed_when: false
-  with_items:
-    - "{{ containerd_package }}"
-    - docker-ce
-    - docker-ce-cli
+      #- name: Remove dpkg hold
+      #  dpkg_selections:
+      #    name: "{{ item }}"
+      #    selection: install
+      #  when: ansible_pkg_mgr == 'apt'
+      #  changed_when: false
+      #  with_items:
+      #    - "{{ containerd_package }}"
+      #    - docker-ce
+      #    - docker-ce-cli
+
+      #- name: Ensure docker packages are installed
+      #  package:
+      #    name: "{{ docker_package_info.pkgs }}"
+      #    state: "{{ docker_package_info.state | default('present') }}"
+      #  module_defaults:
+      #    apt:
+      #      update_cache: true
+      #    dnf:
+      #      enablerepo: "{{ docker_package_info.enablerepo | default(omit) }}"
+      #      disablerepo: "{{ docker_package_info.disablerepo | default(omit) }}"
+      #    yum:
+      #      enablerepo: "{{ docker_package_info.enablerepo | default(omit) }}"
+      #    zypper:
+      #      update_cache: true
+      #  register: docker_task_result
+      #  until: docker_task_result is succeeded
+      #  retries: 4
+      #  delay: "{{ retry_stagger | d(3) }}"
+      #  notify: Restart docker
+      #  when:
+      #    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+      #    - not is_ostree
+      #    - docker_package_info.pkgs | length > 0
 
 - name: Ensure docker packages are installed
   package:
-    name: "{{ docker_package_info.pkgs }}"
-    state: "{{ docker_package_info.state | default('present') }}"
-  module_defaults:
-    apt:
-      update_cache: true
-    dnf:
-      enablerepo: "{{ docker_package_info.enablerepo | default(omit) }}"
-      disablerepo: "{{ docker_package_info.disablerepo | default(omit) }}"
-    yum:
-      enablerepo: "{{ docker_package_info.enablerepo | default(omit) }}"
-    zypper:
-      update_cache: true
-  register: docker_task_result
-  until: docker_task_result is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
-  notify: Restart docker
-  when:
-    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
-    - not is_ostree
-    - docker_package_info.pkgs | length > 0
+    name: "{{ item }}"
+    state: present
+  loop: "{{ docker_packages }}"
+  when: ansible_pkg_mgr == "apt"
 
 # This is required to ensure any apt upgrade will not break kubernetes
 - name: Tell Debian hosts not to change the docker version with apt upgrade

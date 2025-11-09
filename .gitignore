@@ -118,3 +118,6 @@ tmp.md
 # Ansible collection files
 kubernetes_sigs-kubespray*tar.gz
 ansible_collections
+
+#Vault
+iventory/my-cluster/group_vars/all/vault_pass.txt
