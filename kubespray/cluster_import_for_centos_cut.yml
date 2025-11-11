@@ -10,9 +10,3 @@
 
 - name: Add root local path
   ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/update_kubeadm_certificates_4_copy_to_nodes.yml
-
-#- name: Add root local path
-#  ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/update_kubeadm_certificates_5_final.yml
-
-#- name: Add root local path
-#  ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/update_kubeadm_certificates_6_final_test_2.yml
