@@ -1,0 +1,11 @@
+version: '2.4'
+services:
+  kubespray:
+    image: quay.io/kubespray/kubespray:v2.24.0
+    volumes:
+      - /home/vboxuser/git/diplom/diplom-kubespray/kubespray/inventory:/inventory
+      - /home/vboxuser/git/diplom/diplom-kubespray/kubespray:/kubespray
+      - /home/vboxuser/.ssh:/root/.ssh:ro
+    working_dir: /kubespray
+    tty: true
+    stdin_open: true
