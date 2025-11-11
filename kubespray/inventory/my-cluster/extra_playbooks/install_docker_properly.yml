@@ -1,0 +1,100 @@
+---
+- name: Install Docker properly on CentOS 8
+  hosts: all
+  become: yes
+  tasks:
+    - name: Remove existing docker packages
+      dnf:
+        name: 
+          - docker
+          - docker-client
+          - docker-client-latest
+          - docker-common
+          - docker-latest
+          - docker-latest-logrotate
+          - docker-logrotate
+          - docker-engine
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: absent
+      ignore_errors: yes
+
+    - name: Clean up docker data
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /var/lib/docker
+        - /etc/docker
+
+    - name: Install required packages
+      dnf:
+        name:
+          - yum-utils
+          - device-mapper-persistent-data
+          - lvm2
+        state: present
+
+    - name: Add Docker CE repository
+      get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+
+    - name: Install Docker CE
+      dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Create docker daemon.json
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "exec-opts": ["native.cgroupdriver=systemd"],
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "100m"
+            },
+            "storage-driver": "overlay2"
+          }
+
+    - name: Create docker directory
+      file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+
+    - name: Start and enable docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Wait for docker to start
+      wait_for:
+        path: /var/run/docker.sock
+        state: present
+        timeout: 30
+
+    - name: Check docker installation
+      command: docker --version
+      register: docker_result
+
+    - name: Show docker version
+      debug:
+        var: docker_result.stdout
+
+    - name: Test docker
+      command: docker info
+      register: docker_info
+      ignore_errors: yes
+
+    - name: Show docker info
+      debug:
+        var: docker_info.stdout

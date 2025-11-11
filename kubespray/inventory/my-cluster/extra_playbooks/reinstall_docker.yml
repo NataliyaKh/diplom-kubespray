@@ -1,0 +1,66 @@
+---
+- name: Reinstall Docker and Containerd
+  hosts: all
+  become: yes
+  tasks:
+    - name: Stop docker services
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      loop:
+        - docker
+        - docker.socket
+        - containerd
+
+    - name: Remove existing docker packages
+      dnf:
+        name: 
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: absent
+
+    - name: Clean up docker data
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /var/lib/docker
+        - /etc/docker
+
+    - name: Install containerd first
+      dnf:
+        name: containerd.io
+        state: present
+
+    - name: Install docker
+      dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+        state: present
+
+    - name: Start and enable containerd
+      systemd:
+        name: containerd
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Start and enable docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Check docker status
+      command: docker --version
+      register: docker_version
+
+    - name: Show docker version
+      debug:
+        var: docker_version.stdout

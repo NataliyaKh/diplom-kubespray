@@ -1,0 +1,11 @@
+---
+# Жесткое отключение ВСЕХ hold операций
+__docker_hold_packages: false
+__package_hold: false
+
+# Переопределяем переменные которые используются в задаче
+docker_hold_packages: []
+package_hold_packages: []
+
+# Отключаем конкретную задачу через condition
+docker_disable_unhold: true

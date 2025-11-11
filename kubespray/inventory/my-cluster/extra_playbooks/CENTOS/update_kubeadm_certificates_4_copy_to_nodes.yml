@@ -1,0 +1,58 @@
+---
+- name: Final kubeconfig update with kubectl check
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Check kubectl availability
+      command: which kubectl
+      register: kubectl_which
+      changed_when: false
+
+    - name: Show kubectl path
+      debug:
+        var: kubectl_which.stdout
+
+    - name: Ensure admin.conf exists and is correct
+      stat:
+        path: /etc/kubernetes/admin.conf
+      register: admin_conf_stat
+
+    - name: Show admin.conf stat
+      debug:
+        var: admin_conf_stat.stat.exists
+
+    - name: Test kubeconfig with full kubectl path
+      command: /usr/local/bin/kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes
+      register: test_result
+      changed_when: false
+      ignore_errors: true
+
+    - name: Show test result
+      debug:
+        var: test_result.stdout
+
+    - name: Show test error if any
+      debug:
+        var: test_result.stderr
+      when: test_result.rc != 0
+
+
+- name: Simple admin.conf copy to local machine
+  hosts: kube_control_plane[0]
+  become: true
+  become_user: "{{ ansible_user }}"
+  tasks:
+    - name: Read admin.conf content
+      slurp:
+        src: /etc/kubernetes/admin.conf
+      register: admin_conf_content
+      run_once: true
+
+    - name: Save admin.conf content to local file
+      copy:
+        content: "{{ admin_conf_content.content | b64decode }}"
+        dest: "./admin-external.conf"
+        mode: '0644'
+      delegate_to: localhost
+      run_once: true

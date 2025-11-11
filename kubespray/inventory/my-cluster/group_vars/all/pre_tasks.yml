@@ -1,0 +1,48 @@
+---
+ansible_pre_tasks:
+  #  - name: Skip all hold operations by forcing empty lists
+  #    set_fact:
+  #      docker_hold_packages: []
+  #      package_hold_packages: []
+  #    run_once: true
+  #
+  #  - name: Include network configuration tasks for CentOS
+  #    include_tasks: "{{ playbook_dir }}/inventory/my-cluster/extra_playbooks/CENTOS/fix-network-tasks.yml"
+
+  #  - name: Include CentOS repositories tasks
+  #    include_tasks: "{{ playbook_dir }}/inventory/my-cluster/extra_playbooks/CENTOS/fix-centos-repos-tasks.yml"
+
+  #  - name: Include Docker installation tasks for CentOS
+  #    include_tasks: "{{ playbook_dir }}/inventory/my-cluster/extra_playbooks/CENTOS/install-docker-tasks.yml"
+
+      #  - name: Install containerd.io separately
+      #    package:
+      #      name: containerd.io
+      #      state: present
+
+        #  - name: "Custom pre-task: first config"
+        #    package_facts:
+        #      manager: auto
+
+        
+
+
+
+  - name: "Custom pre-task: Install base packages"
+    package:
+      name:
+        - curl
+        - wget
+        - vim
+        - htop
+      state: present
+    when: ansible_os_family == "RedHat"
+
+      #  - name: "Include custom pre-tasks from external file"
+      #    include_tasks: "{{ playbook_dir }}/inventory/my-cluster/extra_playbooks/CENTOS/fix-network-config.yml"
+
+      #ansible_pre_tasks: "{{ lookup('file', 'extra_playbooks/CENTOS/fix_centos_repos.yml') | from_yaml }}"
+      #ansible_pre_tasks: "{{ lookup('file', 'extra_playbooks/CENTOS/install_docker_stable.yml') | from_yaml }}"
+
+
+

@@ -1,0 +1,40 @@
+---
+- name: Install kubectl on worker nodes
+  hosts: kube_node
+  become: true
+  become_user: root
+  tasks:
+    - name: Check if kubectl exists
+      command: which kubectl
+      register: kubectl_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Show kubectl check result
+      debug:
+        var: kubectl_check.stdout
+
+    - name: Download kubectl binary
+      get_url:
+        url: "https://storage.googleapis.com/kubernetes-release/release/v1.27.9/bin/linux/amd64/kubectl"
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+        force: true
+      when: kubectl_check.rc != 0
+
+    - name: Create symlink in /usr/bin
+      file:
+        src: /usr/local/bin/kubectl
+        dest: /usr/bin/kubectl
+        state: link
+        force: true
+      when: kubectl_check.rc != 0
+
+    - name: Verify kubectl installation
+      command: kubectl version --client --short
+      register: kubectl_version
+      changed_when: false
+
+    - name: Show kubectl version
+      debug:
+        var: kubectl_version.stdout

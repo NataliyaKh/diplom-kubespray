@@ -1,0 +1,14 @@
+---
+# Отключаем все package hold операции
+docker_hold_packages: false
+skip_docker_hold: true
+skip_package_hold: true
+
+# Явно указываем не использовать hold
+package_hold: false
+
+# Явно отключаем проблемные задачи
+docker_disable_hold_tasks: true
+
+# Для старых версий Kubespray может потребоваться
+docker_skip_hold: true

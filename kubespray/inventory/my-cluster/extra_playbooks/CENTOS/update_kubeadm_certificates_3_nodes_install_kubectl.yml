@@ -1,0 +1,41 @@
+---
+- name: Install kubectl on worker nodes
+  hosts: kube_node
+  become: true
+  become_user: root
+  tasks:
+    - name: Create releases directory
+      file:
+        path: /tmp/releases
+        state: directory
+        mode: '0755'
+
+    - name: Download kubectl binary
+      get_url:
+        url: "https://storage.googleapis.com/kubernetes-release/release/v1.27.9/bin/linux/amd64/kubectl"
+        dest: /tmp/releases/kubectl
+        mode: '0755'
+        force: yes
+
+    - name: Install kubectl to /usr/local/bin
+      copy:
+        src: /tmp/releases/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+        remote_src: yes
+
+    - name: Create symlink in /usr/bin
+      file:
+        src: /usr/local/bin/kubectl
+        dest: /usr/bin/kubectl
+        state: link
+        force: yes
+
+    - name: Verify kubectl installation
+      command: kubectl version --client --short
+      register: kubectl_version
+      changed_when: false
+
+    - name: Show kubectl version
+      debug:
+        var: kubectl_version.stdout

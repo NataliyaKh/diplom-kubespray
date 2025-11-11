@@ -1,0 +1,26 @@
+---
+- name: Force apt execution with timeouts
+  hosts: all
+  become: yes
+  tasks:
+    - name: Clean all apt locks and processes
+      shell: |
+        pkill -9 apt || true
+        pkill -9 dpkg || true
+        rm -rf /var/lib/apt/lists/lock* /var/cache/apt/archives/lock* /var/lib/dpkg/lock*
+        sleep 2
+
+    - name: Update apt cache with explicit timeout
+      command: timeout 60 apt-get update
+      args:
+        executable: /bin/bash
+      register: apt_update
+      failed_when: apt_update.rc != 0 and apt_update.rc != 124  # ignore timeout exit
+      changed_when: apt_update.rc == 0
+
+    - name: Install base packages with timeout
+      command: timeout 120 apt-get install -y python3 apt-transport-https ca-certificates
+      args:
+        executable: /bin/bash
+      register: apt_install
+      failed_when: apt_install.rc != 0 and apt_install.rc != 124

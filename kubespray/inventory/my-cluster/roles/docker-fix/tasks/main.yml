@@ -1,0 +1,7 @@
+
+---
+- name: Override docker hold tasks
+  block:
+    - name: Disable problematic hold tasks
+      meta: clear_host_errors
+  when: false  # Always skip this fake task

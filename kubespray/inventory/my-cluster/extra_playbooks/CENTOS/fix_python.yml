@@ -1,0 +1,23 @@
+---
+- name: Fix Python interpreter for Ansible
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Check available Python interpreters
+      shell: |
+        which python3 || which python || echo "NO_PYTHON_FOUND"
+      register: python_check
+      changed_when: false
+
+    - name: Show Python check result
+      debug:
+        var: python_check.stdout
+
+    - name: Set correct Python interpreter fact
+      set_fact:
+        ansible_python_interpreter: "{{ 'python3' if 'python3' in python_check.stdout else 'python' }}"
+
+    - name: Show selected Python interpreter
+      debug:
+        var: ansible_python_interpreter

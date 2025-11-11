@@ -1,0 +1,44 @@
+---
+# Basic
+kube_version: v1.27.9
+cluster_name: diplom-cluster
+
+# Network
+kube_network_plugin: calico
+kube_service_addresses: 10.233.0.0/18
+kube_pods_subnet: 10.233.64.0/18
+
+# Container runtime
+#container_manager: docker
+container_manager: containerd
+
+# Docker settings
+docker_setup_method: package
+docker_install_from: docker_ce_linux_repo
+docker_download: false
+
+# Docker packages
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+    #  - containerd.io
+
+etcd_deployment_type: host
+etcd_deployment_type: kubeadm
+
+# Docker repository
+docker_ce_linux_repo_base_url: "https://download.docker.com/linux/ubuntu"
+docker_ce_linux_repo_gpg_key: "https://download.docker.com/linux/ubuntu/gpg" 
+docker_ce_linux_repo_release: "{{ ansible_distribution_release }}"
+
+# Docker daemon config
+docker_daemon_json:
+  "exec-opts": ["native.cgroupdriver=systemd"]
+  "log-driver": "json-file"
+  "log-opts":
+    max-size: "100m"
+  "storage-driver": "overlay2"
+
+# Важно: исправляем проблему с dpkg hold
+docker_hold_packages: false
+skip_docker_hold: true

@@ -1,0 +1,9 @@
+---
+# Жесткое переопределение переменных для отключения hold операций
+docker_hold_packages: []
+package_hold_packages: []
+skip_docker_hold: true
+skip_package_hold: true
+
+# Переопределяем задачу через кастомный task
+docker_disable_hold_operations: true

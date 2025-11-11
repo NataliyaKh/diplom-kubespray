@@ -1,0 +1,44 @@
+---
+- name: Fix apt locks and cleanup
+  hosts: all
+  become: yes
+  tasks:
+    - name: Kill any running apt processes
+      shell: |
+        pkill -9 apt || true
+        pkill -9 apt-get || true
+        pkill -9 dpkg || true
+        sleep 2
+
+    - name: Remove all apt locks
+      shell: |
+        rm -f /var/lib/apt/lists/lock
+        rm -f /var/cache/apt/archives/lock
+        rm -f /var/lib/dpkg/lock
+        rm -f /var/lib/dpkg/lock-frontend
+
+    - name: Clean apt cache
+      shell: |
+        apt clean
+        apt autoclean
+
+    - name: Fix broken packages
+      shell: |
+        dpkg --configure -a
+        apt --fix-broken install -y
+
+    - name: Wait for apt to be available
+      shell: |
+        while fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+          sleep 1
+        done
+
+    - name: Update apt cache with retry
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      register: apt_update
+      until: apt_update is succeeded
+      retries: 5
+      delay: 5
+     

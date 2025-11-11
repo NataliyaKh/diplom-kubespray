@@ -1,0 +1,30 @@
+---
+- name: Add Docker CE stable repository - CentOS only
+  command: dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+  when: ansible_distribution == "CentOS"
+
+- name: Install Docker CE - CentOS only
+  dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+  when: ansible_distribution == "CentOS"
+
+- name: Start docker - CentOS only
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+  when: ansible_distribution == "CentOS"
+
+- name: Check docker - CentOS only
+  command: docker --version
+  register: docker_version
+  when: ansible_distribution == "CentOS"
+
+- name: Show docker version - CentOS only
+  debug:
+    var: docker_version.stdout
+  when: ansible_distribution == "CentOS"

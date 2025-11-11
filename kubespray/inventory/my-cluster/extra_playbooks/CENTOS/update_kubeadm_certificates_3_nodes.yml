@@ -1,0 +1,40 @@
+---
+- name: Step 1 - Fetch admin.conf from first control plane to Ansible control node
+  hosts: kube_control_plane[0]
+  become: true
+  become_user: root
+  tasks:
+    - name: Fetch admin.conf to control node
+      fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: "/tmp/kubeconfig-master/admin.conf"
+        flat: yes
+      run_once: true
+
+- name: Step 2 - Upload admin.conf to all nodes from control node
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Upload admin.conf to nodes
+      copy:
+        src: "/tmp/kubeconfig-master/admin.conf"
+        dest: /etc/kubernetes/admin.conf
+        mode: '0644'
+        backup: yes
+
+    - name: Set permissions
+      file:
+        path: /etc/kubernetes/admin.conf
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Test kubeconfig
+      command: kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes
+      register: test_result
+      changed_when: false
+
+    - name: Show test result
+      debug:
+        var: test_result.stdout

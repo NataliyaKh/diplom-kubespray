@@ -1,0 +1,8 @@
+---
+# Полное отключение проблемных задач через ansible условия
+docker_skip_tasks:
+  - "Remove dpkg hold"
+  - "Set dpkg hold"
+
+# Альтернативно - переопределяем переменные которые используются в задаче
+__docker_package_hold_state: "install"

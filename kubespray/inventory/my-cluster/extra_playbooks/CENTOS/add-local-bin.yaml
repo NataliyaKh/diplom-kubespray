@@ -1,0 +1,22 @@
+---
+- name: Smart PATH management for /usr/local/bin
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Get current PATH from environment
+      shell: 'echo "$PATH"'
+      register: current_path
+      changed_when: false
+
+    - name: Check if /usr/local/bin is already in PATH
+      set_fact:
+        path_contains_local_bin: "{{ '/usr/local/bin' in current_path.stdout.split(':') }}"
+
+    - name: Add /usr/local/bin to /etc/environment if not present
+      lineinfile:
+        path: /etc/environment
+        regex: '^PATH='
+        line: 'PATH="{{ current_path.stdout }}:/usr/local/bin"'
+        backrefs: yes
+      when: not path_contains_local_bin

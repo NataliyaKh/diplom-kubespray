@@ -1,0 +1,61 @@
+---
+- name: Install Docker from CentOS repositories
+  hosts: all
+  become: yes
+  tasks:
+    - name: Remove existing docker
+      dnf:
+        name: docker*
+        state: absent
+      ignore_errors: yes
+
+    - name: Clean up
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /var/lib/docker
+        - /etc/docker
+
+    - name: Install Docker from standard repos
+      dnf:
+        name:
+          - docker
+          - docker-client
+          - docker-common
+        state: present
+
+    - name: Configure docker daemon
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "exec-opts": ["native.cgroupdriver=systemd"],
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "100m"
+            },
+            "storage-driver": "overlay2",
+            "registry-mirrors": []
+          }
+
+    - name: Start and enable docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Wait for docker socket
+      wait_for:
+        path: /var/run/docker.sock
+        state: present
+        timeout: 30
+
+    - name: Check docker
+      command: docker --version
+      register: docker_version
+
+    - name: Show docker version
+      debug:
+        var: docker_version.stdout

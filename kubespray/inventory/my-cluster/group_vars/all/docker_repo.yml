@@ -1,0 +1,17 @@
+---
+# Docker repository settings
+docker_ce_linux_repo_base_url: "https://download.docker.com/linux/ubuntu"
+docker_ce_linux_repo_gpg_key: "https://download.docker.com/linux/ubuntu/gpg"
+docker_ce_linux_repo_release: "jammy"
+
+# Package names
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+    #- containerd.io
+  - docker-buildx-plugin
+
+    #docker_install_containerd: true 
+    #docker_containerd_install: true
+# Skip problematic tasks
+docker_skip_hold: true

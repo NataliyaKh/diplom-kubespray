@@ -1,0 +1,89 @@
+all:
+  hosts:
+    master:
+      ansible_host: 158.160.119.199
+      ip: 10.0.0.10
+      access_ip: 10.0.0.10
+      ansible_python_interpreter: /usr/libexec/platform-python
+    worker1:
+      ansible_host: 158.160.7.52
+      ip: 10.0.1.11
+      access_ip: 10.0.1.11
+      ansible_python_interpreter: /usr/libexec/platform-python
+    worker2:
+      ansible_host: 158.160.209.255
+      ip: 10.0.2.33
+      access_ip: 10.0.2.33
+      ansible_python_interpreter: /usr/libexec/platform-python
+  children:
+    kube_control_plane:
+      hosts:
+        master:
+    kube_node:
+      hosts:
+        worker1:
+        worker2:
+        master:
+    etcd:
+      hosts:
+        master:
+    k8s_cluster:
+      children:
+        kube_control_plane:
+        kube_node:
+    calico_rr:
+      hosts: {}
+  vars:
+    ansible_distribution: CentOS
+    ansible_os_family: RedHat
+    ansible_pkg_mgr: dnf
+    bootstrap_os: centos
+    ansible_user: centos
+    ansible_python_interpreter: /usr/libexec/platform-python
+
+    container_manager: containerd
+    containerd_version: "1.6.26"
+    containerd_setup_method: "package"
+    containerd_install_from: "package"
+    containerd_download: false
+
+    docker_enabled: false
+
+    containerd_use_systemd_cgroup: true
+
+    containerd_config_file: /etc/containerd/config.toml
+    containerd_plugins_registries:
+      - "docker.io"
+
+    libselinux_python_package: python3-libselinux
+
+    etcd_deployment_type: host
+
+    ansible_ssh_private_key_file: ~/.ssh/id_rsa
+    ansible_become: true
+    ansible_become_method: sudo
+    ansible_become_user: root
+    ansible_ssh_common_args: '-o ServerAliveInterval=60 -o ServerAliveCountMax=10 -o ConnectTimeout=10 -o TCPKeepAlive=yes'
+    ansible_timeout: 30
+    ansible_connect_timeout: 10
+    ansible_command_timeout: 600
+    sysctl_ignore_errors: true
+    sysctl_enable_ipv6: false
+
+    kube_apiserver_cert_extra_sans: >-
+      {{
+        [
+          '127.0.0.1',
+          '10.233.0.1',
+          'kubernetes',
+          'kubernetes.default',
+          'kubernetes.default.svc',
+          'kubernetes.default.svc.cluster.local'
+        ] +
+        [ansible_host] +
+        [ip] +
+        [access_ip] +
+        [ansible_default_ipv4.address] +
+        (groups['kube_control_plane'] | map('extract', hostvars, 'ip') | list) +
+        (groups['kube_control_plane'] | map('extract', hostvars, 'ansible_host') | list)
+      | unique }}

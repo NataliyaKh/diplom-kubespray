@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: calico-config
+  namespace: kube-system
+data:
+  typha_service_name: "none"
+  calico_backend: "vxlan"
+  veth_mtu: "1450"
+  cni_network_config: |-
+    {
+      "name": "k8s-pod-network",
+      "cniVersion": "0.3.1",
+      "plugins": [
+        {
+          "type": "calico",
+          "log_level": "info",
+          "datastore_type": "kubernetes",
+          "nodename": "__KUBERNETES_NODE_NAME__",
+          "mtu": __CNI_MTU__,
+          "ipam": {
+            "type": "calico-ipam"
+          },
+          "policy": {
+            "type": "k8s"
+          },
+          "kubernetes": {
+            "kubeconfig": "__KUBECONFIG_FILEPATH__"
+          }
+        },
+        {
+          "type": "portmap",
+          "snat": true,
+          "capabilities": {"portMappings": true}
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: calico-node
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      k8s-app: calico-node
+  template:
+    metadata:
+      labels:
+        k8s-app: calico-node
+    spec:
+      hostNetwork: true
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
+      serviceAccountName: calico-node
+      containers:
+        - name: calico-node
+          image: docker.io/calico/node:v3.26.4
+          env:
+            - name: DATASTORE_TYPE
+              value: "kubernetes"
+            - name: WAIT_FOR_DATASTORE
+              value: "true"
+            - name: CALICO_NETWORKING_BACKEND
+              value: "vxlan"
+            - name: CALICO_IPV4POOL_IPIP
+              value: "Never"
+            - name: CALICO_IPV4POOL_VXLAN
+              value: "Always"
+            - name: IP_AUTODETECTION_METHOD
+              value: "can-reach=8.8.8.8"
+            - name: FELIX_VXLANPORT
+              value: "4789"
+            - name: FELIX_WIREGUARDENABLED
+              value: "false"
+          volumeMounts:
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+            - mountPath: /var/lib/calico
+              name: var-lib-calico
+            - mountPath: /var/run/calico
+              name: var-run-calico
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 250m
+      volumes:
+        - name: cni-bin-dir
+          hostPath:
+            path: /opt/cni/bin
+        - name: cni-net-dir
+          hostPath:
+            path: /etc/cni/net.d
+        - name: var-lib-calico
+          hostPath:
+            path: /var/lib/calico
+        - name: var-run-calico
+          hostPath:
+            path: /var/run/calico

@@ -1,0 +1,13 @@
+---
+- name: Fix Docker hold issue
+  hosts: all
+  vars:
+    docker_hold_packages: []
+    package_hold_packages: []
+  tasks:
+    - name: Override variables before main playbook
+      set_fact:
+        docker_hold_packages: []
+        package_hold_packages: []
+        skip_docker_hold: true
+      run_once: true

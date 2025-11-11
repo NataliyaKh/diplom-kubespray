@@ -1,0 +1,11 @@
+---
+# Правильная структура для hold пакетов
+docker_hold_packages:
+  - "docker-ce"
+  - "docker-ce-cli"
+
+# Отключаем hold для containerd
+containerd_hold_packages: []
+
+# Форсируем строковый формат вместо объектов
+__docker_package_hold_format: "string"

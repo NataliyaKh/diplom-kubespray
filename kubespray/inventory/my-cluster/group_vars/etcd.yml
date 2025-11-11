@@ -1,0 +1,14 @@
+---
+# ETCD configuration
+etcd_deployment_type: host
+etcd_architecture: "linux/amd64"
+etcd_bin_dir: "/usr/local/bin"
+etcd_cert_dir: "{{ etcd_config_dir }}/ssl"
+etcd_config_dir: "/etc/etcd"
+etcd_data_dir: "/var/lib/etcd"
+etcd_memory_limit: "0"
+etcd_heartbeat_interval: 100
+etcd_election_timeout: 1000
+etcd_quota_backend_bytes: 8589934592
+etcd_snapshot_count: 10000
+etcd_kubeadm_enabled: false

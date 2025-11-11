@@ -1,0 +1,51 @@
+---
+- name: Complete Docker removal
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Force kill all Docker processes
+      shell: |
+        pkill -9 -f docker || true
+        pkill -9 -f containerd || true
+      ignore_errors: true
+
+    - name: Remove ALL Docker and containerd packages
+      shell: |
+        dnf remove -y --skip-broken $(rpm -qa | grep -i docker) $(rpm -qa | grep -i containerd) || true
+      ignore_errors: true
+
+    - name: Force remove packages by name
+      shell: |
+        dnf remove -y --skip-broken docker* containerd* || true
+      ignore_errors: true
+
+    - name: Remove Docker directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /var/lib/docker
+        - /etc/docker
+        - /var/run/docker
+        - /var/run/docker.sock
+        - /var/run/containerd
+        - /opt/containerd
+      ignore_errors: true
+
+    - name: Remove Docker binaries
+      shell: |
+        rm -f /usr/bin/docker /usr/bin/dockerd /usr/bin/containerd /usr/bin/ctr || true
+      ignore_errors: true
+
+    - name: Clean package cache
+      command: dnf clean all
+
+    - name: Verify Docker removal
+      command: which docker
+      register: docker_check
+      failed_when: docker_check.rc == 0
+
+    - name: Show verification result
+      debug:
+        msg: "Docker removal successful - exit code {{ docker_check.rc }}"

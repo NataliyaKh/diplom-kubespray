@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: uuid-server-ingress
+spec:
+  rules:
+    - host: 51.250.5.194 
+      http:
+        paths:
+          - path: /uuid
+            pathType: Prefix
+            backend:
+              service:
+                name: uuid-server
+                port:
+                  number: 8080

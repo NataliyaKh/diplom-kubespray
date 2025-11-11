@@ -1,7 +1,7 @@
 ---
 - name: Fix network
   ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/fix-network-config.yml
-    
+
 - name: Fix centos
   ansible.builtin.import_playbook: inventory/my-cluster/extra_playbooks/CENTOS/fix_centos_repos.yml
 

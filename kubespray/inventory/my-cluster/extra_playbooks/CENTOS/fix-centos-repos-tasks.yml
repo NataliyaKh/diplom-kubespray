@@ -1,0 +1,48 @@
+---
+- name: Backup original repos - CentOS only
+  command: cp -r /etc/yum.repos.d /etc/yum.repos.d.backup
+  when: ansible_distribution == "CentOS"
+
+- name: Disable all current repos - CentOS only
+  command: dnf config-manager --disable "*"
+  when: ansible_distribution == "CentOS"
+
+- name: Create vault CentOS repository - CentOS only
+  copy:
+    dest: /etc/yum.repos.d/vault-centos.repo
+    content: |
+      [vault-baseos]
+      name=CentOS Stream 8 - BaseOS
+      baseurl=https://vault.centos.org/centos/8-stream/BaseOS/$basearch/os/
+      gpgcheck=1
+      enabled=1
+      gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+
+      [vault-appstream]
+      name=CentOS Stream 8 - AppStream
+      baseurl=https://vault.centos.org/centos/8-stream/AppStream/$basearch/os/
+      gpgcheck=1
+      enabled=1
+      gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+
+      [vault-extras]
+      name=CentOS Stream 8 - Extras
+      baseurl=https://vault.centos.org/centos/8-stream/extras/$basearch/os/
+      gpgcheck=1
+      enabled=1
+      gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+  when: ansible_distribution == "CentOS"
+
+- name: Install epel repository - CentOS only
+  dnf:
+    name: epel-release
+    state: present
+  when: ansible_distribution == "CentOS"
+
+- name: Clean dnf cache - CentOS only
+  command: dnf clean all
+  when: ansible_distribution == "CentOS"
+
+- name: Test repository access - CentOS only
+  command: dnf makecache
+  when: ansible_distribution == "CentOS"

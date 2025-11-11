@@ -1,0 +1,15 @@
+---
+# Форсируем только Docker
+container_manager: docker
+containerd_enabled: false
+crio_enabled: false
+
+# Очищаем ВСЕ containerd переменные
+containerd_packages: []
+containerd_remove_packages: []
+containerd_install_method: "none"
+containerd_set_official_pkg: false
+
+# Docker установка без containerd
+docker_install_containerd: false
+docker_containerd_install: false

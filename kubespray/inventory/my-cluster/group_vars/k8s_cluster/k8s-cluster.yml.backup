@@ -1,0 +1,75 @@
+---
+# Basic Kubernetes settings
+kube_config_dir: /etc/kubernetes
+kube_script_dir: "{{ bin_dir }}/kubernetes-scripts"
+kube_manifest_dir: "{{ kube_config_dir }}/manifests"
+kube_cert_dir: "{{ kube_config_dir }}/ssl"
+kube_token_dir: "{{ kube_config_dir }}/tokens"
+
+# Kubernetes version
+kube_version: v1.27.9
+
+# Kubernetes API settings
+kube_api_anonymous_auth: true
+kube_apiserver_port: 6443
+kube_apiserver_insecure_port: 0
+
+# Directories and paths
+local_release_dir: "/tmp/releases"
+retry_stagger: 5
+credentials_dir: "{{ inventory_dir }}/credentials"
+
+# Network settings
+kube_network_plugin: calico
+network_policy_engine: calico
+kube_service_addresses: 10.233.0.0/18
+kube_pods_subnet: 10.233.64.0/18
+kube_network_node_prefix: 24
+enable_dual_stack_networks: false
+
+# Kube-proxy settings
+kube_proxy_mode: iptables
+kube_proxy_strict_arp: false
+kube_proxy_nodeport_addresses: []
+
+# Cluster settings
+cluster_name: diplom-cluster
+kube_encrypt_secret_data: false
+kube_log_level: 2
+kube_cert_group: kube-cert
+
+# DNS settings
+dns_mode: coredns
+enable_nodelocaldns: true
+nodelocaldns_ip: 169.254.25.10
+nodelocaldns_health_port: 9254
+dns_domain: "{{ cluster_name }}"
+ndots: 2
+resolvconf_mode: host_resolvconf
+
+# Features
+deploy_netchecker: false
+kata_containers_enabled: false
+k8s_image_pull_policy: IfNotPresent
+kubernetes_audit: false
+dynamic_kubelet_configuration: false
+podsecuritypolicy_enabled: false
+persistent_volumes_enabled: false
+auto_renew_certificates: true
+
+# Container runtime - используем Docker
+container_manager: docker
+
+# Deployment types
+etcd_deployment_type: host
+etcd_kubeadm_enabled: false
+kubelet_deployment_type: host
+
+# Docker settings - используем системные пакеты
+docker_download: false
+docker_version: 20.10.17
+docker_cli_version: "{{ docker_version }}"
+
+# Очищаем все containerd переменные
+containerd_packages: []
+containerd_remove_packages: []

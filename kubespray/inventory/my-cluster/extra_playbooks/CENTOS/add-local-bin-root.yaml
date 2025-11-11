@@ -1,0 +1,36 @@
+---
+- name: Fix sudo secure_path properly
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Check current sudoers configuration
+      shell: 'grep -E "secure_path|Defaults" /etc/sudoers || echo "NO_CONFIG"'
+      register: sudoers_check
+      changed_when: false
+
+    - name: Show current sudoers config
+      debug:
+        var: sudoers_check.stdout
+
+    - name: Ensure secure_path includes /usr/local/bin
+      block:
+        - name: Add or update secure_path in sudoers
+          lineinfile:
+            path: /etc/sudoers
+            regex: '^Defaults\\s+secure_path'
+            line: 'Defaults    secure_path = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin'
+            state: present
+            validate: 'visudo -cf %s'
+            backup: yes
+
+        - name: Verify the change
+          shell: 'grep secure_path /etc/sudoers'
+          register: secure_path_result
+          changed_when: false
+
+        - name: Show secure_path result
+          debug:
+            var: secure_path_result.stdout
+
+

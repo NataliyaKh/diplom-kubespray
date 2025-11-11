@@ -1,0 +1,42 @@
+---
+# Common system settings
+kube_proxy_ipvs_exclude_cidrs: ['10.0.0.0/8']
+enable_dual_stack_networks: false
+sysctl_enable_ipv6: false
+sysctl_ignore_errors: true
+
+# Sysctl settings
+sysctl:
+  net.ipv4.ip_forward: 1
+  net.bridge.bridge-nf-call-iptables: 1
+  net.bridge.bridge-nf-call-ip6tables: 1
+
+# Loadbalancer settings
+loadbalancer_apiserver_port: 6443
+loadbalancer_apiserver_healthcheck_port: 8081
+no_proxy_exclude_workers: false
+
+# Kube ip settings
+kube_ipv4_enable: true
+kube_ipv6_enable: false
+
+# etcd settings
+etcd_kubeadm_enabled: true
+
+helm_enabled: true 
+local_volume_provisioning_enabled: false
+ntp_enabled: true
+
+# Hold packages
+docker_hold_packages: []
+__docker_hold_packages: []
+
+# Role dependencies
+ansible_role_dependencies:
+  container-engine/docker: "{{ playbook_dir }}/inventory/my-cluster/roles/docker-fix"
+
+# containerd settings
+containerd_packages: []
+containerd_enabled: false
+containerd_install_method: none
+skip_containerd: true

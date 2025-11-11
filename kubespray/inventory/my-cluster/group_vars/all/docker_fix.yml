@@ -1,0 +1,18 @@
+---
+# Переопределяем структуру пакетов
+docker_packages_list:
+  - name: docker-ce
+    state: present
+  - name: docker-ce-cli  
+    state: present
+  - name: docker-buildx-plugin
+    state: present
+
+# Отключаем автоматическую установку containerd
+docker_containerd_install: false
+
+# Форсируем правильные имена пакетов
+__docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - docker-buildx-plugin

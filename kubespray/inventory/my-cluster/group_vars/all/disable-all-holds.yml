@@ -1,0 +1,15 @@
+---
+# ПОЛНОСТЬЮ отключаем ВСЕ операции с hold пакетов
+docker_hold_packages: []
+package_hold_packages: []
+skip_docker_hold: true
+skip_package_hold: true
+
+# Отключаем конкретные задачи которые падают
+docker_disable_hold_tasks: true
+
+# Явно отключаем hold для ВСЕХ пакетов
+__package_hold_enabled: false
+
+# Альтернативное имя переменной
+package_hold_enabled: false

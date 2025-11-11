@@ -1,0 +1,30 @@
+---
+- name: Install Docker with stable repositories
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Add Docker CE stable repository
+      command: dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+
+    - name: Install Docker CE
+      dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: Start docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Check docker
+      command: docker --version
+      register: docker_version
+
+    - name: Show docker version
+      debug:
+        var: docker_version.stdout

@@ -1,0 +1,42 @@
+---
+- name: Quick update admin.conf for multi-master access
+  hosts: kube_control_plane
+  become: true
+  become_user: root
+  vars:
+    control_plane_external_ips: "{{ groups['kube_control_plane'] | map('extract', hostvars, 'ansible_host') | list }}"
+  tasks:
+    - name: Show all external IPs
+      debug:
+        var: control_plane_external_ips
+
+    - name: Create load balancer DNS entry in /etc/hosts on all nodes
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item }} kubernetes"
+        state: present
+      loop: "{{ control_plane_external_ips }}"
+      when: inventory_hostname in groups.kube_control_plane
+
+    - name: Update admin.conf to use load balancer endpoint
+      command: |
+        kubectl --kubeconfig=/etc/kubernetes/admin.conf config set-cluster kubernetes \
+          --server=https://kubernetes:6443
+
+    - name: Copy updated admin.conf to all control plane nodes
+      synchronize:
+        src: /etc/kubernetes/admin.conf
+        dest: /etc/kubernetes/admin.conf
+        mode: push
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['kube_control_plane'] }}"
+      when: inventory_hostname == groups['kube_control_plane'][0]
+
+    - name: Test connectivity from all control plane nodes
+      command: kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes
+      register: test_result
+      changed_when: false
+
+    - name: Show test results
+      debug:
+        var: test_result.stdout
