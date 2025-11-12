@@ -56,3 +56,11 @@
         mode: '0644'
       delegate_to: localhost
       run_once: true
+
+    - name: Replace 127.0.0.1 with master node IP in admin-external.conf
+      replace:
+        path: "./admin-external.conf"
+        regexp: 'server: https://127\.0\.0\.1:6443'
+        replace: 'server: https://{{ hostvars["master"]["ansible_host"] }}:6443'
+      delegate_to: localhost
+      run_once: true

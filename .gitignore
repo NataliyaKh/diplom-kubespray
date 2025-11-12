@@ -120,4 +120,5 @@ kubernetes_sigs-kubespray*tar.gz
 ansible_collections
 
 #Vault
-iventory/my-cluster/group_vars/all/vault_pass.txt
+kubespray/inventory/my-cluster/group_vars/all/vault_pass.txt
+kubespray/inventory/my-cluster/extra_playbooks/CENTOS/admin-external.conf
