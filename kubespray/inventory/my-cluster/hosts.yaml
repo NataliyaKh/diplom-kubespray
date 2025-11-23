@@ -1,19 +1,19 @@
 all:
   hosts:
     master:
-      ansible_host: 158.160.121.42
-      ip: 10.0.0.16
-      access_ip: 10.0.0.16
+      ansible_host: 178.154.201.36
+      ip: 10.0.0.15
+      access_ip: 10.0.0.15
       ansible_python_interpreter: /usr/libexec/platform-python
     worker1:
-      ansible_host: 84.201.179.244
-      ip: 10.0.1.29
-      access_ip: 10.0.1.29
+      ansible_host: 89.169.168.252
+      ip: 10.0.1.28
+      access_ip: 10.0.1.28
       ansible_python_interpreter: /usr/libexec/platform-python
     worker2:
-      ansible_host: 51.250.42.232
-      ip: 10.0.2.15
-      access_ip: 10.0.2.15
+      ansible_host: 158.160.208.113
+      ip: 10.0.2.13
+      access_ip: 10.0.2.13
       ansible_python_interpreter: /usr/libexec/platform-python
   children:
     kube_control_plane:
@@ -40,25 +40,18 @@ all:
     bootstrap_os: centos
     ansible_user: centos
     ansible_python_interpreter: /usr/libexec/platform-python
-
     container_manager: containerd
     containerd_version: "1.6.26"
     containerd_setup_method: "package"
     containerd_install_from: "package"
     containerd_download: false
-
     docker_enabled: false
-
     containerd_use_systemd_cgroup: true
-
     containerd_config_file: /etc/containerd/config.toml
     containerd_plugins_registries:
       - "docker.io"
-
     libselinux_python_package: python3-libselinux
-
     etcd_deployment_type: host
-
     ansible_ssh_private_key_file: ~/.ssh/id_rsa
     ansible_become: true
     ansible_become_method: sudo
@@ -69,9 +62,35 @@ all:
     ansible_command_timeout: 600
     sysctl_ignore_errors: true
     sysctl_enable_ipv6: false
-
     kube_apiserver_cert_extra_sans: >-
       {{
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         [
           '127.0.0.1',
           '10.233.0.1',
