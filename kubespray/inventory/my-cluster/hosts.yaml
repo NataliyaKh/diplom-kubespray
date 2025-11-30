@@ -1,19 +1,19 @@
 all:
   hosts:
     master:
-      ansible_host: 158.160.110.70
-      ip: 10.0.0.19
-      access_ip: 10.0.0.19
+      ansible_host: 51.250.70.196
+      ip: 10.0.0.15
+      access_ip: 10.0.0.15
       ansible_python_interpreter: /usr/libexec/platform-python
     worker1:
-      ansible_host: 89.169.188.223
-      ip: 10.0.1.17
-      access_ip: 10.0.1.17
+      ansible_host: 89.169.163.56
+      ip: 10.0.1.4
+      access_ip: 10.0.1.4
       ansible_python_interpreter: /usr/libexec/platform-python
     worker2:
-      ansible_host: 130.193.56.161
-      ip: 10.0.2.10
-      access_ip: 10.0.2.10
+      ansible_host: 158.160.203.132
+      ip: 10.0.2.22
+      access_ip: 10.0.2.22
       ansible_python_interpreter: /usr/libexec/platform-python
   children:
     kube_control_plane:
@@ -64,6 +64,9 @@ all:
     sysctl_enable_ipv6: false
     kube_apiserver_cert_extra_sans: >-
       {{
+
+
+
 
 
 
